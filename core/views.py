@@ -1,4 +1,42 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from core.models import Categoria
+from django.views import View
+import json
 
-def teste(request):
-    return HttpResponse("Olá mundo no Django")
+@method_decorator(csrf_exempt, name='dispatch')
+class CategoriaView(View):
+    def get(self, request, id=None): #consultar
+        if id:
+            qs = Categoria.objects.get(id=id)
+            data = {}
+            data['id'] = qs.id
+            data['descricao'] = qs.descricao
+            return JsonResponse(data)
+        else:
+            data = list(Categoria.objects.values())
+            formatted_data = json.dumps(data, ensure_ascii=False)
+            return HttpResponse(formatted_data, content_type="application/json")
+    
+    def post(self, request): #criar
+        json_data = json.loads(request.body)
+        nova_categoria = Categoria.objects.create(**json_data)
+        data = {"id": nova_categoria.id, "descricao": nova_categoria.descricao}
+        return JsonResponse(data)
+    
+    def patch(self, request, id): #alterar 
+        json_data = json.loads(request.body)
+        qs = Categoria.objects.get(id=id)
+        qs.descricao = json_data['descricao'] # if 'descricao' in json_data else qs.descricao
+        qs.save()
+        data = {}
+        data['id'] = qs.id
+        data['descricao'] =  qs.descricao
+        return JsonResponse(data)
+
+    def delete(self, request, id): #deletar
+        qs = Categoria.objects.get(id=id)
+        qs.delete()
+        data = {'mensagem': 'Item excluido com sucesso!'}
+        return JsonResponse(data)
